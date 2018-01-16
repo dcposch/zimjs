@@ -1,10 +1,9 @@
 var fs = require('fs')
 var choppa = require('choppa')
 var pump = require('pump')
-var through = require('through2')
 var concat = require('concat-stream')
-var pump = require('pump')
 var debug = require('debug')('zimmer')
+var lzma = require('lzma')
 
 module.exports = {
   readHeader: readHeader,
@@ -54,10 +53,10 @@ function readCluster (filename, file, header, cluster, cb) {
   }
 
   readOffset(file, header.clusterPtrPos, cluster, ready)
-  
+
   function ready (err) {
     if (err) return cb(err)
-      
+
     var nextCluster = {index: cluster.index + 1}
     if (nextCluster.index > header.clusterCount - 1) {
       nextCluster = false
@@ -68,31 +67,31 @@ function readCluster (filename, file, header, cluster, cb) {
       if (err) return cb(err)
       readFirstCluster()
     })
-    
+
     function readFirstCluster () {
       if (cluster.blobs === false) return cb(null, cluster)
 
       read(file, cluster.offset, cluster.offset, function (err, compressed) {
         compressed = compressed[0]
         debug('cluster is compressed? %s (%d)', compressed !== 0, compressed)
-        
+
         var offsets = {start: cluster.offset + 1, end: nextCluster ? nextCluster.offset - 1 : null}
         var stream = fs.createReadStream(filename, offsets)
-        var decomp = compressed < 2 ? through() : require('lzma-native').createDecompressor()
+        var isCompressed = compressed < 2 ? through() : lzma.createDecompressor()
         var indexes = []
         var blobs = []
 
         var concatter = concat(function (data) {
           stream.destroy()
           index(data)
-          for (var i = 0; i < indexes.length-1; i++) blobs.push(data.slice(indexes[i], indexes[i+1]))
+          for (var i = 0; i < indexes.length - 1; i++) blobs.push(data.slice(indexes[i], indexes[i + 1]))
           cluster.blobs = blobs
         })
-      
+
         pump(stream, decomp, concatter, function (err) {
           cb(err, cluster)
         })
-      
+
         function index (data) {
           while (data.length) {
             var offset = data.readUInt32LE(indexes.length * 4)
@@ -100,7 +99,7 @@ function readCluster (filename, file, header, cluster, cb) {
             if (offset >= data.length) return
           }
         }
-      }) 
+      })
     }
   }
 }
@@ -155,11 +154,11 @@ function parseDirectoryEntry (data, entry) {
   var ui = Array.prototype.indexOf.call(data, 0, offset)
   if (ui === -1) return null
 
-  var ti = Array.prototype.indexOf.call(data, 0, ui+1)
+  var ti = Array.prototype.indexOf.call(data, 0, ui + 1)
   if (ti === -1) return null
 
   entry.url = data.toString('utf-8', offset, ui)
-  entry.title = data.toString('utf-8', ui+1, ti)
+  entry.title = data.toString('utf-8', ui + 1, ti)
 
   return entry
 }
@@ -178,9 +177,9 @@ function readDirectoryEntry (filename, file, header, entry, cb) {
       if (!result) return next()
       stream.destroy()
     })
-    
+
     pump(stream, parse, function (err) {
-      cb(null, result)        
+      cb(null, result)
     })
   }
 
@@ -193,7 +192,7 @@ function readDirectoryEntry (filename, file, header, entry, cb) {
 }
 
 function readHeader (file, cb) {
-  read(file, 0, 79, function  (err, header) {
+  read(file, 0, 79, function (err, header) {
     if (err) return cb(err)
     cb(null, parseHeader(header))
   })
@@ -209,7 +208,7 @@ function createOffsetStream (file, start, num, opts) {
   if (opts.end) {
     num -= opts.end - (opts.start || 0) + 1
   }
-  
+
   var stream = fs.createReadStream(file, {start: start, end: start + 8 * num - 1})
   var i = 0
 
