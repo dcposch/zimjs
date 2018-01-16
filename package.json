@@ -17,7 +17,8 @@
     "minimist": "^1.2.0",
     "mkdirp": "^0.5.1",
     "ndjson": "^1.4.3",
-    "pump": "^2.0.0"
+    "pump": "^2.0.0",
+    "through2": "^2.0.3"
   },
   "devDependencies": {
     "dependency-check": "^3.0.0",

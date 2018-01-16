@@ -1,4 +1,4 @@
-var zim = require('./')
+var zim = require('../')
 var fs = require('fs')
 var ndjson = require('ndjson')
 var through = require('through2')
@@ -6,7 +6,7 @@ var pump = require('pump')
 var test = require('tape')
 var crypto = require('crypto')
 
-var filename = './wikipedia_ay_all_nopic_2017-03.zim'
+var filename = './data/wikipedia_ay_all_nopic_2017-03.zim'
 var expectedHeader = { 
   articleCount: 4587,
   checksumPos: 1772946,

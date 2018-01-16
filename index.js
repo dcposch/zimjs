@@ -3,6 +3,7 @@ var choppa = require('choppa')
 var pump = require('pump')
 var concat = require('concat-stream')
 var debug = require('debug')('zimmer')
+var through = require('through2')
 var lzma = require('lzma')
 
 module.exports = {
@@ -14,6 +15,7 @@ module.exports = {
   readCluster: readCluster
 }
 
+// Reads from offset start to end, inclusive. Calls cb(err, buf)
 function read (fd, start, end, cb) {
   var len = end - start + 1
   var buf = new Buffer(len)
@@ -71,26 +73,38 @@ function readCluster (filename, file, header, cluster, cb) {
     function readFirstCluster () {
       if (cluster.blobs === false) return cb(null, cluster)
 
-      read(file, cluster.offset, cluster.offset, function (err, compressed) {
-        compressed = compressed[0]
-        debug('cluster is compressed? %s (%d)', compressed !== 0, compressed)
+      read(file, cluster.offset, cluster.offset, function (err, firstByteBuf) {
+        var isLzma = firstByteBuf[0] >= 2
+        debug('cluster is lzma? %s (%d)', isLzma, firstByteBuf[0])
 
-        var offsets = {start: cluster.offset + 1, end: nextCluster ? nextCluster.offset - 1 : null}
-        var stream = fs.createReadStream(filename, offsets)
-        var isCompressed = compressed < 2 ? through() : lzma.createDecompressor()
+        var offsetStart = cluster.offset + 1
+        var offsetEnd = nextCluster ? nextCluster.offset - 1 : null
+
+        read(file, offsetStart, offsetEnd, function (err, data) {
+          if (isLzma) {
+            lzma.decompress(data, function (result, error) {
+              if (error) {
+                cb(error, null)
+              } else {
+                handleDecompressedCluster(result)
+              }
+            })
+          } else {
+            handleDecompressedCluster(data)
+          }
+        })
+
         var indexes = []
         var blobs = []
 
-        var concatter = concat(function (data) {
-          stream.destroy()
+        function handleDecompressedCluster (data) {
           index(data)
-          for (var i = 0; i < indexes.length - 1; i++) blobs.push(data.slice(indexes[i], indexes[i + 1]))
+          for (var i = 0; i < indexes.length - 1; i++) {
+            blobs.push(data.slice(indexes[i], indexes[i + 1]))
+          }
           cluster.blobs = blobs
-        })
-
-        pump(stream, decomp, concatter, function (err) {
-          cb(err, cluster)
-        })
+          cb(null, cluster)
+        }
 
         function index (data) {
           while (data.length) {
@@ -220,7 +234,9 @@ function createOffsetStream (file, start, num, opts) {
     })
   })
 
-  return pump(stream, choppa(8), parse)
+  pump(stream, choppa(8), parse)
+
+  return parse
 }
 
 function createClusterPointerStream (file, header, opts) {
