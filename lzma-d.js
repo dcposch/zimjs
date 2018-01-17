@@ -5,6 +5,8 @@
 
 /* eslint-disable */
 
+const debug = require('debug')('lzma2')
+
 var LZMA = (function () {
   /* ds */
   const action_decompress = 2
@@ -113,7 +115,9 @@ var LZMA = (function () {
     if (this$static.pos >= this$static.count) {
       return -1
     }
-    return this$static.buf[this$static.pos++] & 255
+    const byte = this$static.buf[this$static.pos++] & 255
+    debug('read byte ' + byte.toString(16))
+    return byte
   }
     /** de */
 
@@ -141,9 +145,9 @@ var LZMA = (function () {
   }
 
 
-  function $LZMAByteArrayDecompressor (this$static, data, dictSize, compressedLen) {
+  function $LZMAByteArrayDecompressor (this$static, data, dictSize, packSize, unpackSize) {
     const input = $ByteArrayInputStream({}, data)
-    const output= this$static.output = $ByteArrayOutputStream({})
+    const output = this$static.output = $ByteArrayOutputStream({})
     const decoder = $Decoder({})
 
     const lc = 3
@@ -152,7 +156,8 @@ var LZMA = (function () {
     $SetLcLpPb(decoder, lc, lp, pb)
     $SetDictionarySize(decoder, dictSize)
 
-    this$static.length_0 = compressedLen || N1_longLit
+    this$static.length_0 = unpackSize || N1_longLit
+    debug('LZMAByteArrayDecompressor length_0', this$static.length_0)
     this$static.chunker = $CodeInChunks(decoder, input, output, this$static.length_0)
 
     return this$static
@@ -205,6 +210,7 @@ var LZMA = (function () {
   }
 
   function $PutByte (this$static, b) {
+    debug('putting byte', b, b < 32 ? '.' : String.fromCharCode(b))
     this$static._buffer[this$static._pos++] = b
     if (this$static._pos >= this$static._windowSize) {
       $Flush_0(this$static)
@@ -244,7 +250,7 @@ var LZMA = (function () {
   }
     /** de */
 
-  function $processChunk (this$static) {
+  function $processChunk (this$static, unpackSize) {
     if (!this$static.alive) {
       throw new Error('bad state')
     }
@@ -254,21 +260,24 @@ var LZMA = (function () {
     } else {
             // / co:throw new Error("No decoding");
             /** ds */
-      $processDecoderChunk(this$static)
+      $processDecoderChunk(this$static, unpackSize)
             /** de */
     }
     return this$static.alive
   }
 
     /** ds */
-  function $processDecoderChunk (this$static) {
+  function $processDecoderChunk (this$static, unpackSize) {
     var result = $CodeOneChunk(this$static.decoder)
     if (result == -1) {
       throw new Error('corrupted input')
     }
     this$static.inBytesProcessed = N1_longLit
     this$static.outBytesProcessed = this$static.decoder.nowPos64
-    if (result || compare(this$static.decoder.outSize, P0_longLit) >= 0 && compare(this$static.decoder.nowPos64, this$static.decoder.outSize) >= 0) {
+    //if (result || compare(this$static.decoder.outSize, P0_longLit) >= 0 &&
+    //  compare(this$static.decoder.nowPos64, this$static.decoder.outSize) >= 0) {
+    if (result || this$static.decoder.nowPos64[0] >= unpackSize) {
+      debug('flushing output window', this$static.decoder.m_OutWindow)
       $Flush_0(this$static.decoder.m_OutWindow)
       $ReleaseStream(this$static.decoder.m_OutWindow)
       this$static.decoder.m_RangeDecoder.Stream = null
@@ -702,10 +711,14 @@ var LZMA = (function () {
     return a[1] + a[0]
   }
 
-  function decompressRaw (byteArr, dictSize, compressedLen) {
-    const d = $LZMAByteArrayDecompressor({}, byteArr, dictSize, compressedLen)
-    while ($processChunk(d.chunker))
-    return decode($toByteArray(d.output))
+  function decompressRaw (byteArr, dictSize, packSize, unpackSize) {
+    const d = $LZMAByteArrayDecompressor({}, byteArr, dictSize) // , packSize, unpackSize)
+    while ($processChunk(d.chunker, unpackSize)) {
+      // process chunks
+    }
+    debug('decompressRaw output', d.output)
+    // return $toByteArray(d.output)
+    return Buffer.from($toByteArray(d.output))
   }
 
     /** ds */

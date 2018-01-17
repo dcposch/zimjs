@@ -4,7 +4,7 @@
   "description": "streaming parser for the ZIM aka OpenZIM file format http://www.openzim.org/wiki/ZIM_file_format",
   "main": "index.js",
   "scripts": {
-    "test": "node test/ && dependency-check package.json --entry=cli.js --entry=test.js"
+    "test": "node test/ && dependency-check package.json --entry=cli.js --entry=test/index.js"
   },
   "bin": {
     "zimmer": "cli.js"
