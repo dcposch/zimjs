@@ -1,10 +1,12 @@
-var zim = require('../')
 var fs = require('fs')
 var ndjson = require('ndjson')
 var through = require('through2')
 var pump = require('pump')
 var test = require('tape')
 var crypto = require('crypto')
+
+var zim = require('../')
+var lzma2 = require('../lzma2')
 
 var filename = './test/data/wikipedia_ay_all_nopic_2017-03.zim'
 var expectedHeader = {
@@ -21,6 +23,27 @@ var expectedHeader = {
   version: 5
 }
 
+test('lzma2-hw1', function (t) {
+  testDecompress(t, './test/data/hello-world.txt.xz', 'hello world\n')
+})
+
+test('lzma2-hw2', function (t) {
+  testDecompress(t, './test/data/hw2.txt.xz', 'hello world\nhello world\n')
+})
+
+function testDecompress (t, path, expectedText) {
+  var compressed = fs.readFileSync(path)
+  lzma2.decompress(compressed, function (err, uncompressed) {
+    if (err) {
+      t.ifErr(err)
+    } else {
+      t.deepEquals(uncompressed.toString('utf8'), expectedText, 'text matches')
+      t.end()
+    }
+  })
+}
+
+/*
 test('read header', function (t) {
   fs.open(filename, 'r', function (err, file) {
     if (err) t.ifErr(err)
@@ -91,3 +114,4 @@ test('read cluster data', function (t) {
     })
   })
 })
+*/

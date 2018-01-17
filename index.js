@@ -18,7 +18,7 @@ module.exports = {
 // Reads from offset start to end, inclusive. Calls cb(err, buf)
 function read (fd, start, end, cb) {
   var len = end - start + 1
-  var buf = new Buffer(len)
+  var buf = Buffer.alloc(len)
   fs.read(fd, buf, 0, len, start, function (err) {
     cb(err, buf)
   })
