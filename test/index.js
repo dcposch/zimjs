@@ -6,8 +6,8 @@ var pump = require('pump')
 var test = require('tape')
 var crypto = require('crypto')
 
-var filename = './data/wikipedia_ay_all_nopic_2017-03.zim'
-var expectedHeader = { 
+var filename = './test/data/wikipedia_ay_all_nopic_2017-03.zim'
+var expectedHeader = {
   articleCount: 4587,
   checksumPos: 1772946,
   clusterCount: 12,
@@ -24,7 +24,7 @@ var expectedHeader = {
 test('read header', function (t) {
   fs.open(filename, 'r', function (err, file) {
     if (err) t.ifErr(err)
-    zim.readHeader(file, function(err, header) {
+    zim.readHeader(file, function (err, header) {
       if (err) t.ifErr(err)
       t.deepEquals(header, expectedHeader, 'headers match')
       t.end()
@@ -35,7 +35,7 @@ test('read header', function (t) {
 test('read entry pointer', function (t) {
   fs.open(filename, 'r', function (err, file) {
     if (err) t.ifErr(err)
-    zim.readHeader(file, function(err, header) {
+    zim.readHeader(file, function (err, header) {
       if (err) t.ifErr(err)
       var pointers = zim.createEntryPointerStream(filename, header)
       pointers.once('data', function (pointer) {
@@ -50,7 +50,7 @@ test('read entry pointer', function (t) {
 test('read entry metadata', function (t) {
   fs.open(filename, 'r', function (err, file) {
     if (err) t.ifErr(err)
-    zim.readHeader(file, function(err, header) {
+    zim.readHeader(file, function (err, header) {
       if (err) t.ifErr(err)
       zim.readDirectoryEntry(filename, file, header, {index: 1}, function (err, entry) {
         if (err) t.ifErr(err)
@@ -75,7 +75,7 @@ test('read entry metadata', function (t) {
 test('read cluster data', function (t) {
   fs.open(filename, 'r', function (err, file) {
     if (err) t.ifErr(err)
-    zim.readHeader(file, function(err, header) {
+    zim.readHeader(file, function (err, header) {
       if (err) t.ifErr(err)
       zim.readDirectoryEntry(filename, file, header, {index: 1}, function (err, entry) {
         if (err) t.ifErr(err)

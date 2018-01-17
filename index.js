@@ -4,7 +4,7 @@ var pump = require('pump')
 var concat = require('concat-stream')
 var debug = require('debug')('zimmer')
 var through = require('through2')
-var lzma = require('lzma')
+var lzma2 = require('./lzma2')
 
 module.exports = {
   readHeader: readHeader,
@@ -74,17 +74,17 @@ function readCluster (filename, file, header, cluster, cb) {
       if (cluster.blobs === false) return cb(null, cluster)
 
       read(file, cluster.offset, cluster.offset, function (err, firstByteBuf) {
-        var isLzma = firstByteBuf[0] >= 2
-        debug('cluster is lzma? %s (%d)', isLzma, firstByteBuf[0])
+        var isLzma2 = firstByteBuf[0] >= 2
+        debug('cluster is lzma2? %s (%d)', isLzma2, firstByteBuf[0])
 
         var offsetStart = cluster.offset + 1
         var offsetEnd = nextCluster ? nextCluster.offset - 1 : null
 
         read(file, offsetStart, offsetEnd, function (err, data) {
-          if (isLzma) {
-            lzma.decompress(data, function (result, error) {
-              if (error) {
-                cb(error, null)
+          if (isLzma2) {
+            lzma2.decompress(data, function (err, result) {
+              if (err) {
+                cb(err, null)
               } else {
                 handleDecompressedCluster(result)
               }
