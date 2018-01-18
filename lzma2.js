@@ -215,31 +215,47 @@ function uncompressLzma2 (buf, dictSize, compressedSize) {
     }
     unpackSize = (unpackSize << 16) ^ (buf.readByte() << 8) ^ buf.readByte() + 1
 
+    let props = {lc: 3, lp: 0, pb: 2}
     let uncompressed
     if (isLzma) {
       const packSize = (buf.readByte() << 8) ^ buf.readByte() + 1
 
       if (hasNewProps) {
-        const newProps = buf.readHex(1)
-        if (newProps !== '5d') throw err('unsupported lzma2 props', newProps)
-        debug('ignoring new props', newProps)
+        const newProps = buf.readByte()
+        props = decodeLzmaProps(newProps)
+        debug('got new props', props)
       }
 
       const lzmaBuf = buf.readBuf(packSize)
-      debug('lzma compressed chunk',
-        lzmaBuf.slice(0, Math.min(lzmaBuf.length, 3)).toString('hex') +
-        '... len ' + lzmaBuf.length)
-      uncompressed = lzma.decompressRaw(lzmaBuf, dictSize, packSize, unpackSize)
-      debug('lzma uncompressed chunk', uncompressed)
+      debug('lzma compressed chunk', lzmaBuf, lzmaBuf.length, 'ix', buf.i)
+      uncompressed = lzma.decompressRaw(lzmaBuf, dictSize, unpackSize, props)
+      debug('lzma uncompressed chunk', uncompressed, uncompressed.length)
     } else {
       uncompressed = buf.readBuf(unpackSize)
     }
 
-    debug('lzma chunk finished, ignoring resets', isResetState, isResetDic)
+    if (!isResetState || !isResetDic) {
+      debug('ignoring state/dic unimp', isResetState, isResetDic)
+    }
+    debug('lzma chunk finished')
 
     ret.push(uncompressed)
   }
   return Buffer.concat(ret)
+}
+
+// Decodes LZMA LC/LP/PB
+function decodeLzmaProps (b) {
+  let lc, lp
+  if (b >= (9 * 5 * 5)) {
+    // throw err('invalid lzma props', b)
+    debug('using invalid lzma props', b)
+  }
+  lc = b % 9
+  b = (b / 9) | 0
+  let pb = (b / 5) | 0
+  lp = b % 5
+  return {lc, lp, pb}
 }
 
 // Decodes the props for filter ID 0x21, LZMA2

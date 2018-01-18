@@ -1,7 +1,4 @@
 var fs = require('fs')
-var ndjson = require('ndjson')
-var through = require('through2')
-var pump = require('pump')
 var test = require('tape')
 var crypto = require('crypto')
 
@@ -31,6 +28,11 @@ test('lzma2-hw2', function (t) {
   testDecompress(t, './test/data/hw2.txt.xz', 'hello world\nhello world\n')
 })
 
+test('lzma2-hw2-dbl', function (t) {
+  testDecompress(t, './test/data/hw2-dbl.txt.xz',
+    'hello world\nhello world\nhello world\nhello world\n')
+})
+
 function testDecompress (t, path, expectedText) {
   var compressed = fs.readFileSync(path)
   lzma2.decompress(compressed, function (err, uncompressed) {
@@ -43,7 +45,6 @@ function testDecompress (t, path, expectedText) {
   })
 }
 
-/*
 test('read header', function (t) {
   fs.open(filename, 'r', function (err, file) {
     if (err) t.ifErr(err)
@@ -114,4 +115,3 @@ test('read cluster data', function (t) {
     })
   })
 })
-*/

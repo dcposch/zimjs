@@ -116,7 +116,7 @@ var LZMA = (function () {
       return -1
     }
     const byte = this$static.buf[this$static.pos++] & 255
-    debug('read byte ' + byte.toString(16))
+    // debug('read byte ' + byte.toString(16))
     return byte
   }
     /** de */
@@ -145,15 +145,12 @@ var LZMA = (function () {
   }
 
 
-  function $LZMAByteArrayDecompressor (this$static, data, dictSize, packSize, unpackSize) {
+  function $LZMAByteArrayDecompressor (this$static, data, dictSize, unpackSize, props) {
     const input = $ByteArrayInputStream({}, data)
     const output = this$static.output = $ByteArrayOutputStream({})
     const decoder = $Decoder({})
 
-    const lc = 3
-    const lp = 0
-    const pb = 2
-    $SetLcLpPb(decoder, lc, lp, pb)
+    $SetLcLpPb(decoder, props.lc, props.lp, props.pb)
     $SetDictionarySize(decoder, dictSize)
 
     this$static.length_0 = unpackSize || N1_longLit
@@ -210,7 +207,7 @@ var LZMA = (function () {
   }
 
   function $PutByte (this$static, b) {
-    debug('putting byte', b, b < 32 ? '.' : String.fromCharCode(b))
+    // debug('putting byte', b, b < 32 ? '.' : String.fromCharCode(b))
     this$static._buffer[this$static._pos++] = b
     if (this$static._pos >= this$static._windowSize) {
       $Flush_0(this$static)
@@ -277,7 +274,7 @@ var LZMA = (function () {
     //if (result || compare(this$static.decoder.outSize, P0_longLit) >= 0 &&
     //  compare(this$static.decoder.nowPos64, this$static.decoder.outSize) >= 0) {
     if (result || this$static.decoder.nowPos64[0] >= unpackSize) {
-      debug('flushing output window', this$static.decoder.m_OutWindow)
+      debug('flushing output window')
       $Flush_0(this$static.decoder.m_OutWindow)
       $ReleaseStream(this$static.decoder.m_OutWindow)
       this$static.decoder.m_RangeDecoder.Stream = null
@@ -711,13 +708,12 @@ var LZMA = (function () {
     return a[1] + a[0]
   }
 
-  function decompressRaw (byteArr, dictSize, packSize, unpackSize) {
-    const d = $LZMAByteArrayDecompressor({}, byteArr, dictSize) // , packSize, unpackSize)
+  function decompressRaw (byteArr, dictSize, unpackSize, props) {
+    const d = $LZMAByteArrayDecompressor({}, byteArr, dictSize, null, props)
     while ($processChunk(d.chunker, unpackSize)) {
       // process chunks
     }
-    debug('decompressRaw output', d.output)
-    // return $toByteArray(d.output)
+    // debug('decompressRaw output', d.output)
     return Buffer.from($toByteArray(d.output))
   }
 
